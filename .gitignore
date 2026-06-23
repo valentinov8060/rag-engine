@@ -1,0 +1,16 @@
+# Virtual Environment
+venv/
+.venv/
+env/
+__pycache__/
+*.pyc
+
+# Environment Variables (Rahasia/API Key)
+.env
+
+# Logs dan File Sementara
+logs/
+temp_files/
+
+# VS Code Settings
+.vscode/
