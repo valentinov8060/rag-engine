@@ -19,6 +19,7 @@ class DocumentsService:
         self.temp_dir = "temp_files"
         os.makedirs(self.temp_dir, exist_ok=True)
 
+
     def _extract_text(self, file_path: str, ext: str) -> str:
         text = ""
         if ext == ".pdf":
@@ -34,10 +35,12 @@ class DocumentsService:
                 text += p.text + "\n"
         return text
 
+
     # Private method for ingest_document method
     def _chunk_text(self, text: str) -> list:
         splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
         return splitter.split_text(text)
+
 
     async def _save_to_vector_db(self, chunks: list, filename: str, source_id: str) -> int:
         # Check if the collection exists, if not, create it
@@ -46,6 +49,12 @@ class DocumentsService:
             self.qdrant_client.create_collection(
                 collection_name=self.collection_name,
                 vectors_config=models.VectorParams(size=1536, distance=models.Distance.COSINE),
+            )
+
+            self.qdrant_client.create_payload_index(
+                collection_name=self.collection_name,
+                field_name="source_id",
+                field_schema=models.PayloadSchemaType.KEYWORD,
             )
 
         embeddings_model = OpenAIEmbeddings(
@@ -71,7 +80,8 @@ class DocumentsService:
         self.qdrant_client.upsert(collection_name=self.collection_name, points=points)
         return len(points)
 
-    async def ingest_document(self, file: UploadFile, source_id: str) -> int:
+
+    async def post_ingest_document(self, file: UploadFile, source_id: str) -> int:
         file_extension = os.path.splitext(file.filename)[1].lower()
         temp_file_path = os.path.join(self.temp_dir, f"{source_id}{file_extension}")
 
@@ -100,3 +110,39 @@ class DocumentsService:
             # Guarantee cleanup of temporary files from the server's hard disk
             if os.path.exists(temp_file_path):
                 os.remove(temp_file_path)
+
+    async def get_list_user_documents(self, source_id: str) -> list:
+        """
+        Mengambil daftar nama file dokumen unik yang dimiliki oleh source_id tertentu dari Qdrant
+        """
+        logger.info(f"Mengambil daftar dokumen untuk User ID: {source_id}")
+        try:
+            # Scroll data dari Qdrant berdasarkan filter source_id
+            response, _ = self.qdrant_client.scroll(
+                collection_name=self.collection_name,
+                scroll_filter=models.Filter(
+                    must=[
+                        models.FieldCondition(
+                            key="source_id",  # Qdrant otomatis membaca ini di dalam payload
+                            match=models.MatchValue(value=str(source_id))  # Pastikan source_id dipaksa jadi String
+                        )
+                    ]
+                ),
+                limit=100,
+                with_payload=True,
+                with_vectors=False
+            )
+
+            # Karena data di Qdrant tersimpan per-chunk, kita gunakan "set" 
+            # agar nama file yang sama tidak muncul berulang kali (de-duplikasi)
+            unique_files = set()
+            for point in response:
+                if point.payload and "file_name" in point.payload:
+                    unique_files.add(point.payload["file_name"])
+
+            logger.debug(f"Ditemukan {len(unique_files)} dokumen unik untuk user {source_id}")
+            return list(unique_files)
+
+        except Exception as e:
+            logger.error(f"Gagal mengambil daftar dokumen dari Qdrant: {str(e)}")
+            raise e
