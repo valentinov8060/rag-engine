@@ -57,6 +57,12 @@ class DocumentsService:
                 field_schema=models.PayloadSchemaType.KEYWORD,
             )
 
+            self.qdrant_client.create_payload_index(
+                collection_name=self.collection_name,
+                field_name="file_name",
+                field_schema=models.PayloadSchemaType.KEYWORD,
+            )
+
         embeddings_model = OpenAIEmbeddings(
             openai_api_key=settings.OPENAI_API_KEY,
             model="text-embedding-3-small"
@@ -81,8 +87,8 @@ class DocumentsService:
         return len(points)
 
 
-    async def post_ingest_document(self, file: UploadFile, source_id: str) -> int:
-        file_extension = os.path.splitext(file.filename)[1].lower()
+    async def post_ingest_document(self, source_id: str, file_name: str, file: UploadFile) -> int:
+        file_extension = os.path.splitext(file_name)[1].lower()
         temp_file_path = os.path.join(self.temp_dir, f"{source_id}{file_extension}")
 
         try:
@@ -99,11 +105,11 @@ class DocumentsService:
             chunks = self._chunk_text(raw_text)
 
             # 4. Generate Embeddings & Push to Qdrant Cloud
-            total_points = await self._save_to_vector_db(chunks, file.filename, source_id)
+            total_points = await self._save_to_vector_db(chunks, file_name, source_id)
             return total_points
 
         except Exception as e:
-            logger.error(f"Failed to respond to documents/ingest request. Error occurred while processing document: {str(e)}")
+            logger.error(f"Failed to respond to post documents/ingest request. Error occurred while processing document: {str(e)}")
             raise HTTPException(status_code=500, detail=f"Failed to process document: {str(e)}")
 
         finally:
@@ -111,20 +117,17 @@ class DocumentsService:
             if os.path.exists(temp_file_path):
                 os.remove(temp_file_path)
 
+
     async def get_list_user_documents(self, source_id: str) -> list:
-        """
-        Mengambil daftar nama file dokumen unik yang dimiliki oleh source_id tertentu dari Qdrant
-        """
-        logger.info(f"Mengambil daftar dokumen untuk User ID: {source_id}")
         try:
-            # Scroll data dari Qdrant berdasarkan filter source_id
+            # Scroll data from Qdrant based on source_id filter
             response, _ = self.qdrant_client.scroll(
                 collection_name=self.collection_name,
                 scroll_filter=models.Filter(
                     must=[
                         models.FieldCondition(
-                            key="source_id",  # Qdrant otomatis membaca ini di dalam payload
-                            match=models.MatchValue(value=str(source_id))  # Pastikan source_id dipaksa jadi String
+                            key="source_id",
+                            match=models.MatchValue(value=str(source_id))
                         )
                     ]
                 ),
@@ -133,16 +136,39 @@ class DocumentsService:
                 with_vectors=False
             )
 
-            # Karena data di Qdrant tersimpan per-chunk, kita gunakan "set" 
-            # agar nama file yang sama tidak muncul berulang kali (de-duplikasi)
+            # Since data in Qdrant is stored per-chunk, we use "sets" to prevent the same file name from appearing repeatedly (de-duplication)
             unique_files = set()
             for point in response:
                 if point.payload and "file_name" in point.payload:
                     unique_files.add(point.payload["file_name"])
 
-            logger.debug(f"Ditemukan {len(unique_files)} dokumen unik untuk user {source_id}")
             return list(unique_files)
 
         except Exception as e:
-            logger.error(f"Gagal mengambil daftar dokumen dari Qdrant: {str(e)}")
-            raise e
+            logger.error(f"Failed to respond to get documents/list request. Error occurred while processing document: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Failed to get document: {str(e)}")
+
+
+    async def delete_user_document(self, source_id: str, file_name: str) -> bool:
+        try:
+            # Perform point deletion based on condition filter
+            self.qdrant_client.delete(
+                collection_name=self.collection_name,
+                points_selector=models.Filter(
+                    must=[
+                        models.FieldCondition(
+                            key="source_id",
+                            match=models.MatchValue(value=str(source_id))
+                        ),
+                        models.FieldCondition(
+                            key="file_name",
+                            match=models.MatchValue(value=str(file_name))
+                        )
+                    ]
+                )
+            )
+            return True
+
+        except Exception as e:
+            logger.error(f"Failed to respond to delete documents/remove request. Error occurred while processing document: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Failed to delete document: {str(e)}")
