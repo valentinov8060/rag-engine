@@ -118,7 +118,7 @@ class DocumentsService:
                 os.remove(temp_file_path)
 
 
-    async def get_list_user_documents(self, source_id: str) -> list:
+    async def get_user_documents_list(self, source_id: str) -> list:
         try:
             # Scroll data from Qdrant based on source_id filter
             response, _ = self.qdrant_client.scroll(

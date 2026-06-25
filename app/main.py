@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from app.controllers import documents_controller
+from app.controllers import documents_controller, chats_controller
 
 app = FastAPI(
     title="RAG Engine",
@@ -8,6 +8,7 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 app.include_router(documents_controller.router)
+app.include_router(chats_controller.router)
 
 @app.get("/")
 def root_endpoint():

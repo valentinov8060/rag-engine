@@ -16,7 +16,7 @@ def _validate_source_id_and_file_name(source_id: str = None, file_name: str = No
             detail="The file name is empty."
         )
 
-def validate_ingest_request(source_id: str = None, file_name: str = None, file: UploadFile = None):
+def validate_post_ingest_document(source_id: str = None, file_name: str = None, file: UploadFile = None):
     _validate_source_id_and_file_name(source_id, file_name)
 
     if file and file.filename:
@@ -27,5 +27,5 @@ def validate_ingest_request(source_id: str = None, file_name: str = None, file: 
                 detail=f"The file format '{file_extension}' is not supported. Supported formats: {', '.join(ALLOWED_EXTENSIONS)}."
             )
 
-def validate_remove_document(source_id: str = None, file_name: str = None):
+def validate_delete_remove_document(source_id: str = None, file_name: str = None):
     _validate_source_id_and_file_name(source_id, file_name)

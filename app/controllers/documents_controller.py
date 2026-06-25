@@ -1,7 +1,7 @@
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException
 from typing import Annotated
 from app.configs.logger import logger
-from app.validators.documents_validation import validate_ingest_request, validate_remove_document
+from app.validators.documents_validation import validate_post_ingest_document, validate_delete_remove_document
 from app.services.documents_service import DocumentsService
 
 router = APIRouter(
@@ -22,7 +22,7 @@ async def ingest(
     file: Annotated[UploadFile, File(..., description="The document file to be ingested. Supported formats: .pdf")], 
 ):
     try:
-        validate_ingest_request(source_id=source_id, file_name=file_name, file=file)
+        validate_post_ingest_document(source_id=source_id, file_name=file_name, file=file)
 
         total_chunks = await documents_service.post_ingest_document(source_id=source_id, file_name=file_name, file=file)
         logger.info(f"Successfully responded to post documents/ingest request. With file: {file_name}, source_id: {source_id} and total chunks created: {total_chunks}")
@@ -36,7 +36,7 @@ async def ingest(
         }
     except Exception as e:
         logger.error(f"Failed to respond to post documents/ingest request. Error occurred while processing document: {str(e)}")
-        raise HTTPException(500, detail=f"Failed to process document: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to process document: {str(e)}")
 
 
 @router.get(
@@ -46,7 +46,7 @@ async def ingest(
 )
 async def list(source_id: str):
     try:
-        documents = await documents_service.get_list_user_documents(source_id=source_id)
+        documents = await documents_service.get_user_documents_list(source_id=source_id)
         logger.info(f"Successfully responded to get documents/list request. With source_id: {source_id}")
         return {
             "status": "success",
@@ -58,7 +58,7 @@ async def list(source_id: str):
         }
     except Exception as e:
         logger.error(f"Failed to respond to get documents/list request. Error occurred while processing document: {str(e)}")
-        raise HTTPException(500, detail=f"Failed to load document list: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to load document list: {str(e)}")
 
 
 @router.delete(
@@ -68,7 +68,7 @@ async def list(source_id: str):
 )
 async def remove_document(source_id: str, file_name: str):
     try:
-        validate_remove_document(source_id=source_id, file_name=file_name)
+        validate_delete_remove_document(source_id=source_id, file_name=file_name)
 
         await documents_service.delete_user_document(source_id=source_id, file_name=file_name)
         logger.info(f"Successfully responded to delete documents/remove request. With file: {file_name}, source_id: {source_id}")
@@ -78,4 +78,4 @@ async def remove_document(source_id: str, file_name: str):
         }
     except Exception as e:
         logger.error(f"Failed to respond to delete documents/remove request. Error occurred while processing document: {str(e)}")
-        raise HTTPException(500, detail=f"Failed to delete document: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to delete document: {str(e)}")
