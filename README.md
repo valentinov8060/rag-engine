@@ -11,7 +11,7 @@
    Clone the repository and navigate into the project directory:
 
 ```bash
-cd rag-backend
+cd rag-engine
 ```
 
 Create a virtual environment and activate it:
@@ -60,5 +60,14 @@ The terminal will confirm execution with:
 INFO: Uvicorn running on http://127.0.0.1:8000
 
 - Open your browser and navigate to http://127.0.0.1:8000/docs to explore the interactive Swagger UI Documentation.
+
+6. Running with Docker
+   Build the Docker image locally:
+
+```bash
+docker build -t rag-engine .
+
+docker run -d --name rag-engine-container -p 8000:8000 --env-file .env rag-engine:latest
+```
 
 ---

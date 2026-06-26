@@ -5,10 +5,10 @@ env/
 __pycache__/
 *.pyc
 
-# Environment Variables (Rahasia/API Key)
+# Environment Variables
 .env
 
-# Logs dan File Sementara
+# Logs and Temporary Files
 logs/
 temp_files/
 
