@@ -52,11 +52,14 @@ python -m pip install -r requirements.txt
 
 ```bash
 OPENAI_API_KEY=sk-proj-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
 QDRANT_URL=https://xxxxxx.aws.cloud.qdrant.io:6333
 QDRANT_API_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 GROQ_API_KEY=gsk_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 GROQ_MODEL_NAME=llama-3.1-8b-instant
+
+N8N_SECRET_TOKEN=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
 5. Running the Application

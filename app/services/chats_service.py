@@ -8,7 +8,7 @@ from app.configs.settings import settings
 
 groq_client = AsyncOpenAI(
     base_url="https://api.groq.com/openai/v1",
-    api_key=os.getenv("GROQ_API_KEY")
+    api_key=settings.GROQ_API_KEY
 )
 
 class ChatsService:
@@ -25,7 +25,7 @@ class ChatsService:
     async def post_chat_question(self, source_id: str, question: str) -> str:
         try:
             # 1. Generate Embedding for User Questions
-            openai_client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+            openai_client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
             embedding_response = await openai_client.embeddings.create(
                 model="text-embedding-3-small",
                 input=question
@@ -49,6 +49,7 @@ class ChatsService:
             )
 
             # If no documents are found for that user
+            model_name = settings.GROQ_MODEL_NAME
             if not search_results:
                 fallback_prompt = (
                     "You are a helpful Q&A assistant.\n"
@@ -94,7 +95,6 @@ class ChatsService:
             )
 
             # 5. Perform Inference on Groq Cloud API using Llama 3.1 8B (Super Fast & Cost-Effective)
-            model_name = os.getenv("GROQ_MODEL_NAME", "llama-3.1-8b-instant")
             llm_response = await groq_client.chat.completions.create(
                 model=model_name,
                 messages=[
@@ -107,7 +107,7 @@ class ChatsService:
             ai_answer = llm_response.choices[0].message.content
 
             # 6. Add a footer with referenced document links
-            sources_footer = f"\n\n📚 _Referensi dokumen: {', '.join(referenced_files)}_"
+            sources_footer = f"\n\n📚 Referensi dokumen: {', '.join(referenced_files)}"
             return ai_answer + sources_footer
 
         except Exception as e:
