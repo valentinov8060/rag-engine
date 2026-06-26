@@ -2,6 +2,9 @@ FROM python:3.12-slim
 RUN adduser --system myuser
 USER myuser
 
+ENV HOME=/tmp \
+    PATH=/tmp/.local/bin:$PATH
+
 WORKDIR /code
 
 COPY ./requirements.txt /code/requirements.txt
